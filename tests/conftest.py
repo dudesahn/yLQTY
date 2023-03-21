@@ -165,9 +165,12 @@ def tests_using_tenderly():
     yield yes_or_no
 
 
+# by default, pytest uses decimals, but in solidity we use uints, so 10 actually equals 10 wei (1e-17 for most assets, or 1e-6 for USDC/USDT)
 @pytest.fixture(scope="session")
-def RELATIVE_APPROX():
-    yield 1e-5
+def RELATIVE_APPROX(token):
+    approx = 10
+    print("Approx:", approx, "wei")
+    yield approx
 
 
 # use this to set various fixtures that differ by chain

@@ -170,11 +170,13 @@ def test_setters(
     vault.deposit(amount, {"from": whale})
     name = strategy.name()
 
-    # test our setters in baseStrategy and our main strategy
+    # test our setters in baseStrategy
     strategy.setMaxReportDelay(1e18, {"from": gov})
     strategy.setMinReportDelay(100, {"from": gov})
     strategy.setRewards(gov, {"from": gov})
     strategy.setStrategist(gov, {"from": gov})
+
+    ######### BELOW WILL NEED TO BE UPDATED BASED SETTERS OUR STRATEGY HAS #########
     strategy.setHarvestTriggerParams(1000e6, 25_000e6, {"from": gov})
 
     # have to set voter before you can adjust keepLQTY

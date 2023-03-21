@@ -95,3 +95,79 @@ def trade_handler_action(
     if lusdBalance > 0 or wethBalance > 0:
         token.transfer(strategy, profit_amount, {"from": profit_whale})
         print("Rewards converted into profit and returned")
+
+
+# do a check on our strategy and vault of choice
+def check_status(
+    strategy,
+    vault,
+):
+    # check our current status
+    strategy_params = vault.strategies(strategy)
+    vault_assets = vault.totalAssets()
+    debt_outstanding = vault.debtOutstanding(strategy)
+    credit_available = vault.creditAvailable(strategy)
+    total_debt = vault.totalDebt()
+    share_price = vault.pricePerShare()
+    strategy_debt = strategy_params["totalDebt"]
+    strategy_loss = strategy_params["totalLoss"]
+    strategy_gain = strategy_params["totalGain"]
+    strategy_debt_ratio = strategy_params["debtRatio"]
+    strategy_assets = strategy.estimatedTotalAssets()
+
+    # print our stuff
+    print("Vault Assets:", vault_assets)
+    print("Strategy Debt Outstanding:", debt_outstanding)
+    print("Strategy Credit Available:", credit_available)
+    print("Vault Total Debt:", total_debt)
+    print("Vault Share Price:", share_price)
+    print("Strategy Total Debt:", strategy_debt)
+    print("Strategy Total Loss:", strategy_loss)
+    print("Strategy Total Gain:", strategy_gain)
+    print("Strategy Debt Ratio:", strategy_debt_ratio)
+    print("Strategy Estimated Total Assets:", strategy_assets, "\n")
+
+    # print simplified versions if we have something more than dust
+    token = interface.IERC20(vault.token())
+    if vault_assets > 10:
+        print(
+            "Decimal-Corrected Vault Assets:", vault_assets / (10 ** token.decimals())
+        )
+    if debt_outstanding > 10:
+        print(
+            "Decimal-Corrected Strategy Debt Outstanding:",
+            debt_outstanding / (10 ** token.decimals()),
+        )
+    if credit_available > 10:
+        print(
+            "Decimal-Corrected Strategy Credit Available:",
+            credit_available / (10 ** token.decimals()),
+        )
+    if total_debt > 10:
+        print(
+            "Decimal-Corrected Vault Total Debt:", total_debt / (10 ** token.decimals())
+        )
+    if share_price > 10:
+        print("Decimal-Corrected Share Price:", share_price / (10 ** token.decimals()))
+    if strategy_debt > 10:
+        print(
+            "Decimal-Corrected Strategy Total Debt:",
+            strategy_debt / (10 ** token.decimals()),
+        )
+    if strategy_loss > 10:
+        print(
+            "Decimal-Corrected Strategy Total Loss:",
+            strategy_loss / (10 ** token.decimals()),
+        )
+    if strategy_gain > 10:
+        print(
+            "Decimal-Corrected Strategy Total Gain:",
+            strategy_gain / (10 ** token.decimals()),
+        )
+    if strategy_assets > 10:
+        print(
+            "Decimal-Corrected Strategy Total Assets:",
+            strategy_assets / (10 ** token.decimals()),
+        )
+
+    return strategy_params

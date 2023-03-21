@@ -2,10 +2,6 @@ import pytest
 from utils import harvest_strategy
 from brownie import accounts, interface, chain
 
-# perhaps make this the new base for brownie strategy mix
-
-# last thing to do now is make sure all of my comments make sense and the calls within the tests do as well
-
 # test migrating a strategy
 def test_migration(
     gov,
@@ -45,7 +41,7 @@ def test_migration(
     # sleep to collect earnings
     chain.sleep(sleep_time)
 
-    # will need to update this based on the strategy's constructor ******
+    ######### THIS WILL NEED TO BE UPDATED BASED ON STRATEGY CONSTRUCTOR #########
     new_strategy = gov.deploy(contract_name, vault, trade_factory, 10_000e6, 50_000e6)
 
     # can we harvest an unactivated strategy? should be no
@@ -53,7 +49,7 @@ def test_migration(
     print("\nShould we harvest? Should be False.", tx)
     assert tx == False
 
-    ####### add logic here if we need to test claiming of assets for transferring to the new strategy #######
+    ######### ADD LOGIC TO TEST CLAIMING OF ASSETS FOR TRANSFER TO NEW STRATEGY AS NEEDED #########
     lusd = interface.IERC20(strategy.lusd())
     weth = interface.IERC20(strategy.weth())
     lusd.transfer(strategy, 100e18, {"from": lusd_whale})
@@ -62,7 +58,7 @@ def test_migration(
     # migrate our old strategy
     vault.migrateStrategy(strategy, new_strategy, {"from": gov})
 
-    ####### add logic here to check if the transfer of assets went as expected #######
+    ####### ADD LOGIC TO MAKE SURE ASSET TRANSFER WENT AS EXPECTED #######
     assert weth.balanceOf(strategy) == 0
     assert lusd.balanceOf(strategy) == 0
     assert strategy.balance() == 0
@@ -100,7 +96,7 @@ def test_migration(
 
     # Test out our migrated strategy, confirm we're making a profit
     (profit, loss) = harvest_strategy(
-        True,
+        use_yswaps,
         new_strategy,
         token,
         gov,
@@ -134,6 +130,8 @@ def test_empty_migration(
     destination_strategy,
     trade_factory,
     use_yswaps,
+    is_slippery,
+    RELATIVE_APPROX,
 ):
 
     ## deposit to the vault after approving
@@ -182,7 +180,24 @@ def test_empty_migration(
             destination_strategy,
         )
 
-    # confirm we emptied the strategy
+    # shouldn't have any assets, unless we have slippage, then this might leave dust
+    # for complete emptying in this situtation, use emergencyExit
+    if is_slippery:
+        assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == 0
+        strategy.setEmergencyExit({"from": gov})
+
+        # turn off health check since taking profit on no debt
+        strategy.setDoHealthCheck(False, {"from": gov})
+        (profit, loss) = harvest_strategy(
+            use_yswaps,
+            strategy,
+            token,
+            gov,
+            profit_whale,
+            profit_amount,
+            destination_strategy,
+        )
+
     assert strategy.estimatedTotalAssets() == 0
 
     # make sure we transferred strat params over
