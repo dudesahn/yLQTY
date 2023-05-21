@@ -372,6 +372,12 @@ def test_emergency_exit_with_loss(
     staking.unstake(to_send, {"from": strategy})
     token.transfer(gov, to_send, {"from": strategy})
 
+    ################# SET FALSE IF PROFIT EXPECTED. ADJUST AS NEEDED. #################
+    # set this true if no profit on this test. it is normal for a strategy to not generate profit here.
+    # realistically only wrapped tokens or every-block earners will see profits (convex, etc).
+    # also checked in test_change_debt
+    no_profit = True
+
     # check our current status
     print("\nBefore dust transfer, after main fund transfer")
     strategy_params = check_status(strategy, vault)
@@ -461,14 +467,38 @@ def test_emergency_exit_with_loss(
     assert strategy_params["totalDebt"] == strategy_params["totalGain"] == 0
     assert vault.pricePerShare() == 0
 
+    # yswaps needs another harvest to get the final bit of profit to the vault
+    if use_yswaps:
+        old_gain = strategy_params["totalGain"]
+        (profit, loss) = harvest_strategy(
+            use_yswaps,
+            strategy,
+            token,
+            gov,
+            profit_whale,
+            profit_amount,
+            destination_strategy,
+        )
+        print("Profit:", profit / 1e18)
+
+        # check our current status
+        print("\nAfter yswaps extra harvest")
+        strategy_params = check_status(strategy, vault)
+
+        # make sure we recorded our gain properly
+        if not no_profit:
+            assert strategy_params["totalGain"] > old_gain
+
     # confirm that the strategy has no funds, even for old vaults with the dust donation
     assert strategy.estimatedTotalAssets() == 0
 
-    # vault should also have no assets, except old ones will have 5 wei
+    # vault should also have no assets or just profit, except old ones will also have 5 wei
+    expected_assets = 0
+    if use_yswaps and not no_profit:
+        expected_assets += profit_amount
     if old_vault:
-        assert vault.totalAssets() == dust_donation
-    else:
-        assert vault.totalAssets() == 0
+        expected_assets += dust_donation
+    assert vault.totalAssets() == expected_assets
 
     # simulate 5 days of waiting for share price to bump back up
     chain.sleep(86400 * 5)
@@ -538,9 +568,9 @@ def test_emergency_exit_with_no_loss(
 
     ################# SET FALSE IF PROFIT EXPECTED. ADJUST AS NEEDED. #################
     # set this true if no profit on this test. it is normal for a strategy to not generate profit here.
-    # realistically only wrapped tokens or every-block earners will see profits.
+    # realistically only wrapped tokens or every-block earners will see profits (convex, etc).
     # also checked in test_change_debt
-    no_profit_here = True
+    no_profit = True
 
     # check our current status
     print("\nAfter sending funds away")
@@ -623,14 +653,36 @@ def test_emergency_exit_with_no_loss(
     assert strategy_params["debtRatio"] == 0
     assert strategy_params["totalDebt"] == strategy_params["totalLoss"] == 0
 
+    # yswaps needs another harvest to get the final bit of profit to the vault
+    if use_yswaps:
+        old_gain = strategy_params["totalGain"]
+        (profit, loss) = harvest_strategy(
+            use_yswaps,
+            strategy,
+            token,
+            gov,
+            profit_whale,
+            profit_amount,
+            destination_strategy,
+        )
+        print("Profit:", profit / 1e18)
+
+        # check our current status
+        print("\nAfter yswaps extra harvest")
+        strategy_params = check_status(strategy, vault)
+
+        # make sure we recorded our gain properly
+        if not no_profit:
+            assert strategy_params["totalGain"] > old_gain
+
     # confirm that the strategy has no funds
     assert strategy.estimatedTotalAssets() == 0
 
     # debtOutstanding and credit should now be zero, but we will still send any earned profits immediately back to vault
     assert vault.debtOutstanding(strategy) == vault.creditAvailable(strategy) == 0
 
-    # non-yswaps strategies should still earn some small amount of profit, or even normal profit if we hold our assets as a wrapped yield-bearing token
-    if no_profit or use_yswaps or no_profit_here:
+    # many strategies will still earn some small amount of profit, or even normal profit if we hold our assets as a wrapped yield-bearing token
+    if no_profit:
         assert strategy_params["totalGain"] == 0
         assert vault.pricePerShare() == starting_share_price
         assert vault.totalAssets() == old_assets
@@ -654,7 +706,7 @@ def test_emergency_exit_with_no_loss(
     strategy_params = check_status(strategy, vault)
 
     # share price should have gone up, without loss except for special cases
-    if no_profit or use_yswaps or no_profit_here:
+    if no_profit:
         assert (
             pytest.approx(vault.pricePerShare(), rel=RELATIVE_APPROX)
             == starting_share_price

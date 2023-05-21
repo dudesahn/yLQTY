@@ -144,16 +144,17 @@ def test_change_debt(
     print("\nAfter harvest to return DR to 100%")
     strategy_params = check_status(strategy, vault)
 
-    ################# SET FALSE IF PROFIT EXPECTED HERE. ADJUST AS NEEDED. #################
+    ################# SET FALSE IF PROFIT EXPECTED. ADJUST AS NEEDED. #################
     # set this true if no profit on this test. it is normal for a strategy to not generate profit here.
-    # realistically only wrapped tokens or every-block earners will see profits.
-    no_profit_here = False
+    # realistically only wrapped tokens or every-block earners will see profits (convex, etc).
+    # also checked in test_change_debt
+    no_profit = False
 
     # debtOutstanding should be zero, credit available will be much lower than previously but greater than zero (profits)
     # however, if the strategy has no profit, or has inconsistent profit-taking, then we can have no credit here
     # also checked in test_emergency_exit_with_no_loss
     assert vault.debtOutstanding(strategy) == 0
-    if no_profit or no_profit_here:
+    if no_profit:
         vault.creditAvailable(strategy) == 0
     else:
         assert 0 < vault.creditAvailable(strategy) < vault.totalAssets() / 2

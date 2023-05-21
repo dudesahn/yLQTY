@@ -376,6 +376,8 @@ def test_empty_strat(
     assert vault.pricePerShare() == starting_share_price
     assert vault.debtOutstanding(strategy) == 0
 
+    print("Total supply:", vault.totalSupply())
+
     # accept our losses, sad day 🥲
     strategy.setDoHealthCheck(False, {"from": gov})
     (profit, loss) = harvest_strategy(
