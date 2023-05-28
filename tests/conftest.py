@@ -229,7 +229,7 @@ def vault(pm, gov, rewards, guardian, management, token, vault_address):
         Vault = pm(config["dependencies"][0]).Vault
         vault = guardian.deploy(Vault)
         vault.initialize(token, gov, rewards, "", "", guardian)
-        vault.setDepositLimit(2 ** 256 - 1, {"from": gov})
+        vault.setDepositLimit(2**256 - 1, {"from": gov})
         vault.setManagement(management, {"from": gov})
     else:
         vault = interface.IVaultFactory045(vault_address)
@@ -276,7 +276,7 @@ def strategy(
                 interface.ICurveStrategy045(strat_address).harvest({"from": gov})
                 vault.removeStrategyFromQueue(strat_address, {"from": gov})
 
-    vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
+    vault.addStrategy(strategy, 10_000, 0, 2**256 - 1, 0, {"from": gov})
 
     # turn our oracle into testing mode by setting the provider to 0x00, then forcing true
     strategy.setBaseFeeOracle(base_fee_oracle, {"from": management})
@@ -293,8 +293,8 @@ def strategy(
 
 
 @pytest.fixture
-def voter(
-    yLQTYVoter,
+def booster(
+    yLQTYBooster,
     strategy,
     gov,
     rewards,
@@ -303,8 +303,8 @@ def voter(
     token,
     vault_address,
 ):
-    voter = gov.deploy(yLQTYVoter, strategy)
-    yield voter
+    booster = gov.deploy(yLQTYBooster, strategy)
+    yield booster
 
 
 @pytest.fixture(scope="session")

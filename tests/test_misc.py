@@ -19,7 +19,7 @@ def test_remove_from_withdrawal_queue(
 ):
     ## deposit to the vault after approving
     starting_whale = token.balanceOf(whale)
-    token.approve(vault, 2 ** 256 - 1, {"from": whale})
+    token.approve(vault, 2**256 - 1, {"from": whale})
     vault.deposit(amount, {"from": whale})
     (profit, loss) = harvest_strategy(
         use_yswaps,
@@ -83,7 +83,7 @@ def test_revoke_strategy_from_vault(
 
     ## deposit to the vault after approving
     starting_whale = token.balanceOf(whale)
-    token.approve(vault, 2 ** 256 - 1, {"from": whale})
+    token.approve(vault, 2**256 - 1, {"from": whale})
     vault.deposit(amount, {"from": whale})
     (profit, loss) = harvest_strategy(
         use_yswaps,
@@ -166,7 +166,7 @@ def test_setters(
 ):
     # deposit to the vault after approving
     starting_whale = token.balanceOf(whale)
-    token.approve(vault, 2 ** 256 - 1, {"from": whale})
+    token.approve(vault, 2**256 - 1, {"from": whale})
     vault.deposit(amount, {"from": whale})
     name = strategy.name()
 
@@ -183,7 +183,7 @@ def test_setters(
     with brownie.reverts():
         strategy.setKeepLqty(700, {"from": gov})
     strategy.setKeepLqty(0, {"from": gov})
-    strategy.setVoter(whale.address, {"from": gov})
+    strategy.setBooster(whale.address, {"from": gov})
     strategy.setKeepLqty(700, {"from": gov})
 
     # test our reverts
@@ -194,7 +194,7 @@ def test_setters(
         strategy.setKeepLqty(0, {"from": whale})
 
     with brownie.reverts():
-        strategy.setVoter(ZERO_ADDRESS, {"from": whale})
+        strategy.setBooster(ZERO_ADDRESS, {"from": whale})
 
 
 # test sweeping out tokens
@@ -212,7 +212,7 @@ def test_sweep(
     use_yswaps,
 ):
     # deposit to the vault after approving
-    token.approve(vault, 2 ** 256 - 1, {"from": whale})
+    token.approve(vault, 2**256 - 1, {"from": whale})
     vault.deposit(amount, {"from": whale})
     (profit, loss) = harvest_strategy(
         use_yswaps,

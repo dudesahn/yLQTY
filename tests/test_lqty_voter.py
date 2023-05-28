@@ -20,11 +20,11 @@ def test_simple_harvest_keep(
     profit_amount,
     destination_strategy,
     use_yswaps,
-    voter,
+    booster,
 ):
     ## deposit to the vault after approving
     starting_whale = token.balanceOf(whale)
-    token.approve(vault, 2 ** 256 - 1, {"from": whale})
+    token.approve(vault, 2**256 - 1, {"from": whale})
     vault.deposit(amount, {"from": whale})
     newWhale = token.balanceOf(whale)
 
@@ -43,18 +43,18 @@ def test_simple_harvest_keep(
     assert token.balanceOf(strategy) == 0
     assert strategy.estimatedTotalAssets() > 0
 
-    # turn on keeping some LQTY for our voter
-    strategy.setVoter(voter, {"from": gov})
+    # turn on keeping some LQTY for our booster
+    strategy.setBooster(booster, {"from": gov})
 
     # simulate profits
     chain.sleep(sleep_time)
 
     # check our name for fun (jk, for coverage)
-    name = voter.name()
+    name = booster.name()
     print("Name:", name)
 
     # re-set strategy
-    voter.setStrategy(strategy, {"from": gov})
+    booster.setStrategy(strategy, {"from": gov})
 
     # harvest, store new asset amount
     (profit, loss) = harvest_strategy(
@@ -67,7 +67,7 @@ def test_simple_harvest_keep(
         destination_strategy,
     )
 
-    # need second harvest to get some profits sent to voter (ySwaps)
+    # need second harvest to get some profits sent to booster (ySwaps)
     (profit, loss) = harvest_strategy(
         use_yswaps,
         strategy,
@@ -78,8 +78,8 @@ def test_simple_harvest_keep(
         destination_strategy,
     )
 
-    # check that our voter got its lqty
-    assert voter.stakedBalance() > 0
+    # check that our booster got its lqty
+    assert booster.stakedBalance() > 0
 
     ################# GENERATE CLAIMABLE PROFIT HERE AS NEEDED #################
     # we simulate minting LUSD fees from liquity's borrower operations to the staking contract
@@ -95,17 +95,14 @@ def test_simple_harvest_keep(
     after = staking.getPendingLUSDGain(lusd_borrower)
     assert after > before
 
-    # check that we have claimable profit on our voter
-    claimable_profit = voter.claimableProfitInUsdc()
-    assert claimable_profit > 0
-    claimable_lusd = staking.getPendingLUSDGain(voter)
+    # check that we have claimable profit on our booster
+    claimable_lusd = staking.getPendingLUSDGain(booster)
     print("Claimable LUSD:", claimable_lusd / 1e18)
-    print("Claimable Profit in USDC:", claimable_profit / 1e6)
 
     # simulate profits
     chain.sleep(sleep_time)
 
-    # need second harvest to get some profits sent to voter (ySwaps)
+    # need second harvest to get some profits sent to booster (ySwaps)
     (profit, loss) = harvest_strategy(
         use_yswaps,
         strategy,
@@ -194,106 +191,106 @@ def test_sweeps_and_harvest(
     destination_strategy,
     use_yswaps,
     lusd_whale,
-    voter,
+    booster,
 ):
     # collect our tokens
     lqty = interface.IERC20(strategy.lqty())
     lusd = interface.IERC20(strategy.lusd())
 
-    # lusd whale sends lusd to our voter
-    lusd.transfer(voter, 2000e18, {"from": lusd_whale})
+    # lusd whale sends lusd to our booster
+    lusd.transfer(booster, 2000e18, {"from": lusd_whale})
 
     # we can sweep out any non-want
-    voter.sweep(strategy.lusd(), {"from": gov})
+    booster.sweep(strategy.lusd(), {"from": gov})
 
-    # lusd whale sends ether and lusd to our voter, profit whale sends in lqty
-    lusd.transfer(voter, 2000e18, {"from": lusd_whale})
-    lusd_whale.transfer(voter, 1e18)
-    lqty.transfer(voter, 100e18, {"from": profit_whale})
+    # lusd whale sends ether and lusd to our booster, profit whale sends in lqty
+    lusd.transfer(booster, 2000e18, {"from": lusd_whale})
+    lusd_whale.transfer(booster, 1e18)
+    lqty.transfer(booster, 100e18, {"from": profit_whale})
 
     # we can sweep out any non-want, do twice for zero sweep
-    voter.sweep(strategy.lusd(), {"from": gov})
-    voter.sweep(strategy.lusd(), {"from": gov})
+    booster.sweep(strategy.lusd(), {"from": gov})
+    booster.sweep(strategy.lusd(), {"from": gov})
 
     # only gov can sweep
     with brownie.reverts():
-        voter.sweep(strategy.lusd(), {"from": whale})
+        booster.sweep(strategy.lusd(), {"from": whale})
 
     # not even gov can sweep lqty
     with brownie.reverts():
-        voter.sweep(strategy.lqty(), {"from": gov})
+        booster.sweep(strategy.lqty(), {"from": gov})
 
-    # lusd whale sends more lusd to our voter
-    lusd.transfer(voter, 2000e18, {"from": lusd_whale})
+    # lusd whale sends more lusd to our booster
+    lusd.transfer(booster, 2000e18, {"from": lusd_whale})
 
     # can't do it before we sleep, for some reason coverage doesn't pick up on this 🤔
-    assert chain.time() < voter.unstakeQueued() + (14 * 86400)
+    assert chain.time() < booster.unstakeQueued() + (14 * 86400)
     with brownie.reverts():
-        voter.unstakeAndSweep(2 ** 256 - 1, {"from": gov})
+        booster.unstakeAndSweep(2**256 - 1, {"from": gov})
 
     # queue our sweep, gotta wait two weeks before we can sweep tho
-    voter.queueSweep({"from": gov})
+    booster.queueSweep({"from": gov})
     chain.sleep(86400 * 15)
     chain.mine(1)
 
     # lock some lqty, but only strategy can
     with brownie.reverts():
-        voter.strategyHarvest({"from": gov})
-    voter.strategyHarvest({"from": strategy})
+        booster.strategyHarvest({"from": gov})
+    booster.strategyHarvest({"from": strategy})
 
     # sweep!
-    voter.unstakeAndSweep(voter.stakedBalance(), {"from": gov})
+    booster.unstakeAndSweep(booster.stakedBalance(), {"from": gov})
 
     # only gov can sweep
     with brownie.reverts():
-        voter.unstakeAndSweep(voter.stakedBalance(), {"from": whale})
+        booster.unstakeAndSweep(booster.stakedBalance(), {"from": whale})
 
     chain.sleep(1)
     chain.mine(1)
 
     # harvest with no stake and no lqty
-    voter.strategyHarvest({"from": strategy})
+    booster.strategyHarvest({"from": strategy})
 
     # check
-    assert voter.stakedBalance() == 0
+    assert booster.stakedBalance() == 0
 
     # harvest with no stake and some lqty
-    lqty.transfer(voter, 100e18, {"from": profit_whale})
-    voter.strategyHarvest({"from": strategy})
+    lqty.transfer(booster, 100e18, {"from": profit_whale})
+    booster.strategyHarvest({"from": strategy})
 
     # check
-    assert voter.stakedBalance() > 0
-    voter.strategyHarvest({"from": strategy})
+    assert booster.stakedBalance() > 0
+    booster.strategyHarvest({"from": strategy})
 
     # sweep again!
-    voter.unstakeAndSweep(2 ** 256 - 1, {"from": gov})
+    booster.unstakeAndSweep(2**256 - 1, {"from": gov})
 
     # sweep again!
-    voter.unstakeAndSweep(2 ** 256 - 1, {"from": gov})
+    booster.unstakeAndSweep(2**256 - 1, {"from": gov})
 
     # check
-    assert voter.stakedBalance() == 0
+    assert booster.stakedBalance() == 0
 
     # one last harvest
-    voter.strategyHarvest({"from": strategy})
+    booster.strategyHarvest({"from": strategy})
 
-    # lusd whale sends ether and lusd to our voter
-    lusd.transfer(voter, 2000e18, {"from": lusd_whale})
-    lusd_whale.transfer(voter, 1e18)
+    # lusd whale sends ether and lusd to our booster
+    lusd.transfer(booster, 2000e18, {"from": lusd_whale})
+    lusd_whale.transfer(booster, 1e18)
 
     # send it back out
-    voter.unstakeAndSweep(2 ** 256 - 1, {"from": gov})
+    booster.unstakeAndSweep(2**256 - 1, {"from": gov})
 
     # send in more
-    lusd.transfer(voter, 2000e18, {"from": lusd_whale})
-    lusd_whale.transfer(voter, 1e18)
+    lusd.transfer(booster, 2000e18, {"from": lusd_whale})
+    lusd_whale.transfer(booster, 1e18)
 
-    # voter should have balance, then we harvest to make it go away (to strategy)
-    assert voter.balance() > 0
-    voter.strategyHarvest({"from": strategy})
-    assert voter.balance() == 0
+    # booster should have balance, then we harvest to make it go away (to strategy)
+    assert booster.balance() > 0
+    booster.strategyHarvest({"from": strategy})
+    assert booster.balance() == 0
 
     # can't sweep if we wait too long, oops
     chain.sleep(14 * 86400)
     with brownie.reverts():
-        voter.unstakeAndSweep(2 ** 256 - 1, {"from": gov})
+        booster.unstakeAndSweep(2**256 - 1, {"from": gov})
