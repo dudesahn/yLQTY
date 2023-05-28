@@ -11,12 +11,6 @@ interface IWeth {
     function deposit() external payable;
 }
 
-interface IOracle {
-    function getPriceUsdcRecommended(
-        address tokenAddress
-    ) external view returns (uint256);
-}
-
 interface ILiquityStaking {
     function stake(uint _LQTYamount) external;
 
@@ -29,7 +23,7 @@ interface ILiquityStaking {
     function stakes(address _user) external view returns (uint);
 }
 
-contract yLQTYVoter is Ownable {
+contract yLQTYBooster is Ownable {
     using SafeERC20 for IERC20;
     /* ========== STATE VARIABLES ========== */
 
@@ -61,6 +55,7 @@ contract yLQTYVoter is Ownable {
     /* ========== EVENTS ========== */
 
     event LqtySwept(uint256 indexed amount);
+    event StrategyUpdated(address indexed strategyAddress);
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -86,7 +81,7 @@ contract yLQTYVoter is Ownable {
 
     /// @notice Strategy name.
     function name() external view returns (string memory) {
-        return "yLQTYVoter";
+        return "yLQTYBooster";
     }
 
     /// @notice Balance of want staked in Liquity's staking contract.
@@ -131,7 +126,7 @@ contract yLQTYVoter is Ownable {
         require(
             block.timestamp > unstakeQueued + 2 weeks &&
                 block.timestamp < unstakeQueued + 3 weeks,
-            "Try again"
+            "Must sweep >2, <3 weeks after queueing"
         );
 
         // if we request more than we have, we still just get our whole stake
@@ -174,36 +169,18 @@ contract yLQTYVoter is Ownable {
         }
     }
 
-    /// @notice Calculates the profit if all claimable assets were sold for USDC (6 decimals).
-    /// @dev Uses yearn's lens oracle, if returned values are strange then troubleshoot there.
-    /// @return Total return in USDC from selling claimable LUSD and ETH.
-    function claimableProfitInUsdc() public view returns (uint256) {
-        IOracle yearnOracle = IOracle(
-            0x83d95e0D5f402511dB06817Aff3f9eA88224B030
-        ); // yearn lens oracle
-        uint256 lusdPrice = yearnOracle.getPriceUsdcRecommended(address(lusd));
-        uint256 etherPrice = yearnOracle.getPriceUsdcRecommended(
-            0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-        ); // use weth address
-
-        uint256 claimableLusd = lqtyStaking.getPendingLUSDGain(address(this));
-        uint256 claimableETH = lqtyStaking.getPendingETHGain(address(this));
-
-        // Oracle returns prices as 6 decimals, so multiply by claimable amount and divide by token decimals (1e18)
-        return (lusdPrice * claimableLusd + etherPrice * claimableETH) / 1e18;
-    }
-
     // include so our contract plays nicely with ether
     receive() external payable {}
 
     /* ========== SETTERS ========== */
     // These functions are useful for setting parameters of the strategy that may need to be adjusted.
 
-    /// @notice Use this to set or update our voter contracts.
+    /// @notice Use this to set or update our strategy contract.
     /// @dev For Curve strategies, this is where we send our keepCVX.
     ///  Only owner can set this.
     /// @param _strategy Address of our lqty strategy.
     function setStrategy(address _strategy) external onlyOwner {
         strategy = _strategy;
+        emit StrategyUpdated(_strategy);
     }
 }

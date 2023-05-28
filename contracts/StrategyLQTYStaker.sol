@@ -11,18 +11,28 @@ interface ITradeFactory {
     function disable(address, address) external;
 }
 
+interface IOracle {
+    function latestRoundData(
+        address,
+        address
+    )
+        external
+        view
+        returns (
+            uint80 roundId,
+            uint256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        );
+}
+
 interface IWeth {
     function deposit() external payable;
 }
 
 interface IBooster {
     function strategyHarvest() external;
-}
-
-interface IOracle {
-    function getPriceUsdcRecommended(
-        address tokenAddress
-    ) external view returns (uint256);
 }
 
 interface ILiquityStaking {
@@ -42,7 +52,7 @@ contract StrategyLQTYStaker is BaseStrategy {
     /* ========== STATE VARIABLES ========== */
 
     /// @notice LQTY staking contract
-    ILiquityStaking public lqtyStaking =
+    ILiquityStaking public constant lqtyStaking =
         ILiquityStaking(0x4f9Fbb3f1E99B56e0Fe2892e623Ed36A76Fc605d);
 
     /// @notice The percentage of LQTY from each harvest that we send to yearn's secondary staker to boost yields.
@@ -73,9 +83,6 @@ contract StrategyLQTYStaker is BaseStrategy {
     /// @notice Maximum profit size in USDC that we want to harvest (ignore gas price once we get here).
     /// @dev Only used in harvestTrigger.
     uint256 public harvestProfitMaxInUsdc;
-
-    // we use this to be able to adjust our strategy's name
-    string internal stratName;
 
     // ySwaps stuff
     /// @notice The address of our ySwaps trade factory.
@@ -114,16 +121,13 @@ contract StrategyLQTYStaker is BaseStrategy {
 
         // set keep to 5%
         keepLQTY = 500;
-
-        // set our strategy's name
-        stratName = "StrategyLQTYStaker";
     }
 
     /* ========== VIEWS ========== */
 
     /// @notice Strategy name.
     function name() external view override returns (string memory) {
-        return stratName;
+        return "StrategyLQTYStaker";
     }
 
     /// @notice Balance of want staked in Liquity's staking contract.
@@ -239,10 +243,11 @@ contract StrategyLQTYStaker is BaseStrategy {
                     _neededFromStaked = _amountNeeded - _wantBal;
                 }
                 // withdraw whatever extra funds we need
-                lqtyStaking.unstake(Math.min(_stakedBal, _neededFromStaked));
+                // normally we would do min(staked, _neededFromStaked) but liquity already does that for us
+                lqtyStaking.unstake(_neededFromStaked);
+                _wantBal = balanceOfWant();
             }
-            uint256 _withdrawnBal = balanceOfWant();
-            _liquidatedAmount = Math.min(_amountNeeded, _withdrawnBal);
+            _liquidatedAmount = Math.min(_amountNeeded, _wantBal);
             unchecked {
                 _loss = _amountNeeded - _liquidatedAmount;
             }
@@ -259,6 +264,7 @@ contract StrategyLQTYStaker is BaseStrategy {
             // don't bother withdrawing zero, save gas where we can
             lqtyStaking.unstake(_stakedBal);
         }
+
         return balanceOfWant();
     }
 
@@ -429,20 +435,21 @@ contract StrategyLQTYStaker is BaseStrategy {
     }
 
     /// @notice Calculates the profit if all claimable assets were sold for USDC (6 decimals).
-    /// @dev Uses yearn's lens oracle, if returned values are strange then troubleshoot there.
+    /// @dev Uses chainlink's price oracle for ETH price, assumes $1 for LUSD.
     /// @return Total return in USDC from selling claimable LUSD and ETH.
     function claimableProfitInUsdc() public view returns (uint256) {
-        IOracle yearnOracle = IOracle(
-            0x83d95e0D5f402511dB06817Aff3f9eA88224B030
-        ); // yearn lens oracle
-        uint256 lusdPrice = yearnOracle.getPriceUsdcRecommended(address(lusd));
-        uint256 etherPrice = yearnOracle.getPriceUsdcRecommended(address(weth));
+        (, uint256 wethPrice, , , ) = IOracle(
+            0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf
+        ).latestRoundData(
+                0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+                address(0x0000000000000000000000000000000000000348) // USD, returns 1e8
+            );
 
         uint256 claimableLusd = lqtyStaking.getPendingLUSDGain(address(this));
         uint256 claimableETH = lqtyStaking.getPendingETHGain(address(this));
 
-        // Oracle returns prices as 6 decimals, so multiply by claimable amount and divide by token decimals (1e18)
-        return (lusdPrice * claimableLusd + etherPrice * claimableETH) / 1e18;
+        // Oracle returns prices as 8 decimals, so multiply by claimable amount and divide by 1e20 to get 1e6 result
+        return (1e8 * claimableLusd + wethPrice * claimableETH) / 1e20;
     }
 
     /// @notice Convert our keeper's eth cost into want
