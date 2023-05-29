@@ -19,6 +19,10 @@ def test_keepers_and_trade_handler(
     trade_factory,
     lusd_whale,
 ):
+    # no testing needed if we're not using yswaps
+    if not use_yswaps:
+        return
+
     ## deposit to the vault after approving
     starting_whale = token.balanceOf(whale)
     token.approve(vault, 2 ** 256 - 1, {"from": whale})

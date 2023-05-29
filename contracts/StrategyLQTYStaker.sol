@@ -15,7 +15,7 @@ interface IWeth {
     function deposit() external payable;
 }
 
-interface IVoter {
+interface IBooster {
     function strategyHarvest() external;
 }
 
@@ -48,8 +48,8 @@ contract StrategyLQTYStaker is BaseStrategy {
     /// @notice The percentage of LQTY from each harvest that we send to yearn's secondary staker to boost yields.
     uint256 public keepLQTY;
 
-    /// @notice The address of our Liquity voter. This is where we send any keepLQTY.
-    IVoter public liquityVoter;
+    /// @notice The address of our Liquity booster. This is where we send any keepLQTY.
+    IBooster public liquityBooster;
 
     // this means all of our fee values are in basis points
     uint256 internal constant FEE_DENOMINATOR = 10000;
@@ -106,18 +106,17 @@ contract StrategyLQTYStaker is BaseStrategy {
         want.approve(address(lqtyStaking), type(uint256).max);
 
         // set up our max delay
-        maxReportDelay = 365 days;
+        maxReportDelay = 30 days;
 
         // set up rewards and trade factory
         rewardsTokens = [address(weth), address(lusd)];
-        _updateRewards(rewardsTokens);
         _setUpTradeFactory();
 
         // set keep to 5%
         keepLQTY = 500;
 
         // set our strategy's name
-        stratName = "StrategyLQTYCompounder";
+        stratName = "StrategyLQTYStaker";
     }
 
     /* ========== VIEWS ========== */
@@ -164,18 +163,18 @@ contract StrategyLQTYStaker is BaseStrategy {
             IWeth(address(weth)).deposit{value: ethBalance}();
         }
 
-        // send some LQTY to our voter and claim accrued yield from it
+        // send some LQTY to our booster and claim accrued yield from it
         uint256 _keepLQTY = keepLQTY;
-        address _liquityVoter = address(liquityVoter);
-        if (_keepLQTY > 0 && _liquityVoter != address(0)) {
+        address _liquityBooster = address(liquityBooster);
+        if (_keepLQTY > 0 && _liquityBooster != address(0)) {
             uint256 lqtyBalance = lqty.balanceOf(address(this));
-            uint256 _sendToVoter;
+            uint256 _sendToBooster;
             unchecked {
-                _sendToVoter = (lqtyBalance * _keepLQTY) / FEE_DENOMINATOR;
+                _sendToBooster = (lqtyBalance * _keepLQTY) / FEE_DENOMINATOR;
             }
-            if (_sendToVoter > 0) {
-                lqty.safeTransfer(_liquityVoter, _sendToVoter);
-                liquityVoter.strategyHarvest();
+            if (_sendToBooster > 0) {
+                lqty.safeTransfer(_liquityBooster, _sendToBooster);
+                liquityBooster.strategyHarvest();
             }
         }
 
@@ -462,23 +461,23 @@ contract StrategyLQTYStaker is BaseStrategy {
 
     /// @notice Use this to set or update our keep amounts for this strategy.
     /// @dev Must be less than 1,000. Set in basis points. Only governance can set this.
-    /// @param _keepLqty Percent of LQTY from each harvest to send to our voter.
+    /// @param _keepLqty Percent of LQTY from each harvest to send to our booster.
     function setKeepLqty(uint256 _keepLqty) external onlyGovernance {
         if (_keepLqty > 1000) {
             revert();
         }
-        if (_keepLqty > 0 && address(liquityVoter) == address(0)) {
+        if (_keepLqty > 0 && address(liquityBooster) == address(0)) {
             revert();
         }
         keepLQTY = _keepLqty;
     }
 
-    /// @notice Use this to set or update our voter contracts.
+    /// @notice Use this to set or update our booster contract.
     /// @dev This is where we send our keepLQTY to compound rewards
     ///  Only governance can set this.
-    /// @param _voter Address of our liquity voter.
-    function setVoter(address _voter) external onlyGovernance {
-        liquityVoter = IVoter(_voter);
+    /// @param _booster Address of our liquity booster.
+    function setBooster(address _booster) external onlyGovernance {
+        liquityBooster = IBooster(_booster);
     }
 
     /**

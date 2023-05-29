@@ -109,9 +109,7 @@ def test_cloning(
     vault.removeStrategyFromQueue(strategy.address, {"from": gov})
 
     # attach our new strategy, ensure it's the only one
-    vault.addStrategy(
-        new_strategy.address, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov}
-    )
+    vault.addStrategy(new_strategy.address, 10_000, 0, 2 ** 256 - 1, 0, {"from": gov})
     assert vault.withdrawalQueue(0) == new_strategy.address
     assert vault.strategies(new_strategy)["debtRatio"] == 10_000
     assert vault.strategies(strategy)["debtRatio"] == 0
