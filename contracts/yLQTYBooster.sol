@@ -34,9 +34,6 @@ contract yLQTYBooster is Ownable {
     /// @notice LQTY strategy
     address public strategy;
 
-    // this means all of our fee values are in basis points
-    uint256 internal constant FEE_DENOMINATOR = 10000;
-
     /// @notice Address of our main rewards token, LUSD
     IERC20 public constant lusd =
         IERC20(0x5f98805A4E8be255a32880FDeC7F6728C6568bA0);

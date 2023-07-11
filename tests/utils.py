@@ -25,7 +25,7 @@ def harvest_strategy(
 
     # send WETH and LUSD to the strategy
     # op bridge, also has ether
-    lusd_whale = accounts.at("0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", force=True)
+    lusd_whale = destination_strategy
     # this check makes sure only send rewards when they actually would have been earned
     if use_yswaps and strategy.stakedBalance() > 0:
         # liquity doesn't do a good job of claiming

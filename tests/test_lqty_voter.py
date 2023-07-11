@@ -194,7 +194,7 @@ def test_sweeps_and_harvest(
     booster,
 ):
     # collect our tokens
-    lqty = interface.IERC20(strategy.lqty())
+    lqty = interface.IERC20(strategy.want())
     lusd = interface.IERC20(strategy.lusd())
 
     # lusd whale sends lusd to our booster
@@ -218,7 +218,7 @@ def test_sweeps_and_harvest(
 
     # not even gov can sweep lqty
     with brownie.reverts():
-        booster.sweep(strategy.lqty(), {"from": gov})
+        booster.sweep(strategy.want(), {"from": gov})
 
     # lusd whale sends more lusd to our booster
     lusd.transfer(booster, 2000e18, {"from": lusd_whale})

@@ -262,7 +262,7 @@ def test_weird_reverts(
     vault,
     whale,
     strategy,
-    destination_strategy,
+    other_strategy,
 ):
 
     # only vault can call this
@@ -271,7 +271,7 @@ def test_weird_reverts(
 
     # can't migrate to a different vault
     with brownie.reverts():
-        vault.migrateStrategy(strategy, destination_strategy, {"from": gov})
+        vault.migrateStrategy(strategy, other_strategy, {"from": gov})
 
     # can't withdraw from a non-vault address
     with brownie.reverts():

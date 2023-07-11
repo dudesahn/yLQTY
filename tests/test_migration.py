@@ -15,6 +15,7 @@ def test_migration(
     profit_whale,
     profit_amount,
     destination_strategy,
+    other_strategy,
     trade_factory,
     use_yswaps,
     lusd_whale,

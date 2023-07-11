@@ -160,6 +160,11 @@ def sleep_time():
 
 
 @pytest.fixture(scope="session")
+def other_strategy():
+    yield interface.ICurveStrategy045("0x83D0458e627cFD7C6d0da12a1223bd168e1c8B64")
+
+
+@pytest.fixture(scope="session")
 def tests_using_tenderly():
     yes_or_no = use_tenderly
     yield yes_or_no
@@ -309,10 +314,12 @@ def booster(
 
 @pytest.fixture(scope="session")
 def lusd_whale():
-    return accounts.at("0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1", force=True)
+    return accounts.at(
+        "0x66017D22b0f8556afDd19FC67041899Eb65a21bb", force=True
+    )  # stability pool
 
 
 @pytest.fixture(scope="session")
-def destination_strategy():
-    # destination strategy of the route
-    yield interface.ICurveStrategy045("0x83D0458e627cFD7C6d0da12a1223bd168e1c8B64")
+def destination_strategy(lusd_whale):
+    # for this repo, use our whale
+    yield lusd_whale

@@ -72,10 +72,6 @@ contract StrategyLQTYStaker is BaseStrategy {
     IERC20 public constant weth =
         IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
-    /// @notice LQTY token address.
-    IERC20 public constant lqty =
-        IERC20(0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D);
-
     /// @notice Minimum profit size in USDC that we want to harvest.
     /// @dev Only used in harvestTrigger.
     uint256 public harvestProfitMinInUsdc;
@@ -171,13 +167,13 @@ contract StrategyLQTYStaker is BaseStrategy {
         uint256 _keepLQTY = keepLQTY;
         address _liquityBooster = address(liquityBooster);
         if (_keepLQTY > 0 && _liquityBooster != address(0)) {
-            uint256 lqtyBalance = lqty.balanceOf(address(this));
+            uint256 lqtyBalance = want.balanceOf(address(this));
             uint256 _sendToBooster;
             unchecked {
                 _sendToBooster = (lqtyBalance * _keepLQTY) / FEE_DENOMINATOR;
             }
             if (_sendToBooster > 0) {
-                lqty.safeTransfer(_liquityBooster, _sendToBooster);
+                want.safeTransfer(_liquityBooster, _sendToBooster);
                 liquityBooster.strategyHarvest();
             }
         }
@@ -283,7 +279,7 @@ contract StrategyLQTYStaker is BaseStrategy {
 
         if (ethBalance > 0) {
             IWeth(address(weth)).deposit{value: ethBalance}();
-            weth.safeTransfer(_newStrategy, ethBalance);
+            weth.safeTransfer(_newStrategy, weth.balanceOf(address(this)));
         }
     }
 
@@ -341,7 +337,7 @@ contract StrategyLQTYStaker is BaseStrategy {
         // enable for all rewards tokens too
         for (uint256 i; i < rewardsTokens.length; ++i) {
             address _rewardsToken = rewardsTokens[i];
-            IERC20(_rewardsToken).approve(_tradeFactory, type(uint256).max);
+            IERC20(_rewardsToken).safeApprove(_tradeFactory, type(uint256).max);
             tf.enable(_rewardsToken, _want);
         }
     }
@@ -367,7 +363,7 @@ contract StrategyLQTYStaker is BaseStrategy {
         // disable for all rewards tokens too
         for (uint256 i; i < rewardsTokens.length; ++i) {
             address _rewardsToken = rewardsTokens[i];
-            IERC20(_rewardsToken).approve(_tradeFactory, 0);
+            IERC20(_rewardsToken).safeApprove(_tradeFactory, 0);
             if (_disableTf) {
                 tf.disable(_rewardsToken, _want);
             }
