@@ -166,7 +166,7 @@ contract StrategyLQTYStaker is BaseStrategy {
         // send some LQTY to our booster and claim accrued yield from it
         uint256 _keepLQTY = keepLQTY;
         address _liquityBooster = address(liquityBooster);
-        if (_keepLQTY > 0 && _liquityBooster != address(0)) {
+        if (_keepLQTY > 0 && _liquityBooster != address(0) && _stakedBal > 0) {
             uint256 lqtyBalance = want.balanceOf(address(this));
             uint256 _sendToBooster;
             unchecked {
